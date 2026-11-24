@@ -1,5 +1,8 @@
 """API del planificador de estudio. Orquesta los tres agentes."""
+from pathlib import Path
+
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse
 
 from app.agentes.evaluador import evaluar
 from app.agentes.planificador import planificar
@@ -17,7 +20,16 @@ def _ejecutar(funcion, *args):
         raise HTTPException(status_code=e.codigo, detail=str(e))
 
 
-@app.get("/")
+PAGINA = Path(__file__).parent / "static" / "index.html"
+
+
+@app.get("/", include_in_schema=False)
+def pagina_principal():
+    """Interfaz web para estudiar con los tres agentes."""
+    return FileResponse(PAGINA)
+
+
+@app.get("/salud")
 def salud():
     return {"estado": "ok", "docs": "/docs"}
 

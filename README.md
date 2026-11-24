@@ -24,6 +24,7 @@ planificador-estudio/
 │   ├── main.py            # API (FastAPI)
 │   ├── llm.py             # conexión con Gemini (compartida)
 │   ├── esquemas.py        # formatos de datos
+│   ├── static/index.html  # interfaz web
 │   └── agentes/           # los tres agentes
 ├── scripts/
 │   ├── sesion_estudio.py  # sesión completa en la terminal
@@ -93,7 +94,8 @@ python -m venv .venv
 .venv\Scripts\python -m uvicorn app.main:app --reload
 ```
 
-Abre http://localhost:8000/docs para probar los endpoints desde el navegador. Otras opciones:
+Abre **http://localhost:8000** para usar la interfaz web (te guía paso a paso: tema → plan → estudiar → nota).
+La página técnica de la API está en http://localhost:8000/docs. Otras opciones:
 
 ```powershell
 .venv\Scripts\python -m scripts.sesion_estudio "Fotosíntesis"
@@ -107,7 +109,8 @@ Abre http://localhost:8000/docs para probar los endpoints desde el navegador. Ot
 
 | Método | Ruta | Agente | Cuerpo de ejemplo |
 |---|---|---|---|
-| GET | `/` | — | Comprueba que la API está viva |
+| GET | `/` | — | Interfaz web para estudiar |
+| GET | `/salud` | — | Comprueba que la API está viva |
 | POST | `/planificar` | Planificador | `{"tema": "Fotosíntesis", "nivel": "principiante", "num_subtemas": 5}` |
 | POST | `/material` | Tutor | `{"tema": "Fotosíntesis", "subtema": "La fase luminosa", "num_preguntas": 3}` |
 | POST | `/evaluar` | Evaluador | `{"material": <respuesta de /material>, "respuestas": [{"id": 1, "respuesta": "..."}]}` |

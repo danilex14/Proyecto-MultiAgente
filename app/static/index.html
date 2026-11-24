@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Planificador de estudio</title>
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
+<style>
+  :root {
+    --bg: #f6f7fb; --card: #ffffff; --text: #1d2330; --muted: #667085; --border: #e4e7ee;
+    --accent: #4f46e5; --accent-soft: #eef0ff; --ok: #12805c; --ok-soft: #e7f6ef;
+    --bad: #b42318; --bad-soft: #fdecea; --warn-soft: #fff6e0; --warn: #8a5a00;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #12141a; --card: #1b1e27; --text: #e8eaf0; --muted: #9aa3b2; --border: #2b303d;
+      --accent: #8b85ff; --accent-soft: #262649; --ok: #4fd1a0; --ok-soft: #173329;
+      --bad: #ff8a80; --bad-soft: #3a1d1d; --warn-soft: #3a2f14; --warn: #ffd27a;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 820px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 1.7rem; margin: 0 0 4px; }
+  h2 { font-size: 1.25rem; margin: 0 0 12px; }
+  .sub { color: var(--muted); margin: 0 0 20px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+          padding: 20px; margin-bottom: 16px; }
+  label { display: block; font-weight: 600; margin: 12px 0 6px; }
+  input, select, textarea { width: 100%; padding: 10px 12px; border-radius: 10px; font: inherit;
+          border: 1px solid var(--border); background: var(--bg); color: var(--text); }
+  textarea { min-height: 80px; resize: vertical; }
+  .fila { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 560px) { .fila { grid-template-columns: 1fr; } }
+  button { font: inherit; font-weight: 600; border: 0; border-radius: 10px; padding: 11px 18px;
+           background: var(--accent); color: #fff; cursor: pointer; }
+  button.sec { background: var(--accent-soft); color: var(--accent); }
+  button:disabled { opacity: .6; cursor: wait; }
+  .acciones { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+  .pasos { display: flex; gap: 6px; margin: 0 0 20px; padding: 0; list-style: none; flex-wrap: wrap; }
+  .pasos li { font-size: .85rem; padding: 4px 12px; border-radius: 99px; background: var(--card);
+              border: 1px solid var(--border); color: var(--muted); }
+  .pasos li.activo { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .subtema { display: flex; gap: 14px; align-items: flex-start; padding: 14px; border-radius: 12px;
+             border: 1px solid var(--border); margin-bottom: 10px; cursor: pointer; background: var(--bg); }
+  .subtema:hover { border-color: var(--accent); }
+  .num { flex: none; width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center;
+         background: var(--accent-soft); color: var(--accent); font-weight: 700; }
+  .subtema.hecho .num { background: var(--ok-soft); color: var(--ok); }
+  .subtema h3 { margin: 0; font-size: 1rem; }
+  .subtema p { margin: 2px 0 0; color: var(--muted); font-size: .92rem; }
+  .nota { margin-left: auto; font-weight: 700; color: var(--ok); white-space: nowrap; }
+  .explicacion :is(h1,h2,h3) { font-size: 1.05rem; }
+  .explicacion code { background: var(--accent-soft); padding: 1px 5px; border-radius: 5px; }
+  .clave { background: var(--accent-soft); border-radius: 12px; padding: 12px 16px 12px 34px; }
+  .pregunta { border-top: 1px solid var(--border); padding-top: 14px; margin-top: 14px; }
+  .resultado { border-radius: 10px; padding: 10px 14px; margin-top: 8px; }
+  .resultado.bien { background: var(--ok-soft); color: var(--ok); }
+  .resultado.mal { background: var(--bad-soft); color: var(--bad); }
+  .puntaje { font-size: 2.6rem; font-weight: 800; color: var(--accent); margin: 0; }
+  .aviso { background: var(--warn-soft); color: var(--warn); border-radius: 10px; padding: 12px 14px; }
+  .cargando { display: flex; align-items: center; gap: 12px; color: var(--muted); }
+  .spinner { width: 22px; height: 22px; border-radius: 50%; border: 3px solid var(--border);
+             border-top-color: var(--accent); animation: giro 0.9s linear infinite; }
+  @keyframes giro { to { transform: rotate(360deg); } }
+  .oculto { display: none; }
+  .volver { background: none; color: var(--accent); padding: 0; margin-bottom: 12px; }
+  footer { color: var(--muted); font-size: .85rem; text-align: center; margin-top: 24px; }
+  footer a { color: var(--muted); }
+</style>
+</head>
+<body>
+<main>
+  <h1>📚 Planificador de estudio</h1>
+  <p class="sub">Tres agentes de IA te arman un plan, te explican cada parte y corrigen tus respuestas.</p>
+
+  <ol class="pasos" id="pasos">
+    <li data-paso="tema">1. Tema</li>
+    <li data-paso="plan">2. Plan</li>
+    <li data-paso="estudio">3. Estudiar</li>
+    <li data-paso="resultado">4. Resultado</li>
+  </ol>
+
+  <div id="error" class="aviso oculto" role="alert"></div>
+  <div id="cargando" class="card cargando oculto" aria-live="polite"><div class="spinner"></div><span id="cargando-texto"></span></div>
+
+  <!-- Paso 1: tema -->
+  <section id="vista-tema" class="card">
+    <h2>¿Qué quieres aprender?</h2>
+    <form id="form-tema">
+      <label for="tema">Tema</label>
+      <input id="tema" required placeholder="Ej.: Fotosíntesis, Revolución Francesa, derivadas...">
+      <div class="fila">
+        <div>
+          <label for="nivel">Tu nivel</label>
+          <select id="nivel">
+            <option value="principiante">Principiante</option>
+            <option value="intermedio">Intermedio</option>
+            <option value="avanzado">Avanzado</option>
+          </select>
+        </div>
+        <div>
+          <label for="cantidad">Cantidad de partes</label>
+          <select id="cantidad">
+            <option>3</option><option>4</option><option selected>5</option><option>6</option><option>8</option>
+          </select>
+        </div>
+      </div>
+      <div class="acciones"><button type="submit">Crear mi plan</button></div>
+    </form>
+  </section>
+
+  <!-- Paso 2: plan -->
+  <section id="vista-plan" class="card oculto">
+    <h2 id="plan-titulo"></h2>
+    <p class="sub" id="plan-objetivo"></p>
+    <p><strong>Elige una parte para empezar:</strong></p>
+    <div id="lista-subtemas"></div>
+    <div class="acciones"><button class="sec" id="nuevo-tema">Estudiar otro tema</button></div>
+  </section>
+
+  <!-- Paso 3: estudiar -->
+  <section id="vista-estudio" class="card oculto">
+    <button class="volver" data-ir="plan">← Volver al plan</button>
+    <h2 id="estudio-titulo"></h2>
+    <div class="explicacion" id="explicacion"></div>
+    <h3>Puntos clave</h3>
+    <ul class="clave" id="puntos-clave"></ul>
+    <h3>Pon a prueba lo que aprendiste</h3>
+    <form id="form-respuestas">
+      <div id="preguntas"></div>
+      <div class="acciones"><button type="submit">Corregir mis respuestas</button></div>
+    </form>
+  </section>
+
+  <!-- Paso 4: resultado -->
+  <section id="vista-resultado" class="card oculto">
+    <h2>Tu resultado</h2>
+    <p class="puntaje" id="puntaje"></p>
+    <p id="recomendacion"></p>
+    <div id="resultados"></div>
+    <div class="acciones">
+      <button id="siguiente">Siguiente parte</button>
+      <button class="sec" data-ir="plan">Volver al plan</button>
+    </div>
+  </section>
+
+  <footer>Hecho con FastAPI + Gemini · <a href="/docs">API para desarrolladores</a></footer>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const vistas = ["tema", "plan", "estudio", "resultado"];
+const estado = { tema: "", nivel: "principiante", plan: null, actual: null, material: null, notas: {} };
+
+// Guarda el progreso en este navegador (si se puede)
+function guardar() { try { localStorage.setItem("planificador", JSON.stringify(estado)); } catch {} }
+function cargar() {
+  try { Object.assign(estado, JSON.parse(localStorage.getItem("planificador")) || {}); } catch {}
+}
+
+function mostrar(vista) {
+  vistas.forEach(v => $("vista-" + v).classList.toggle("oculto", v !== vista));
+  document.querySelectorAll("#pasos li").forEach(li => li.classList.toggle("activo", li.dataset.paso === vista));
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function error(msg) {
+  $("error").textContent = msg || "";
+  $("error").classList.toggle("oculto", !msg);
+}
+
+function texto(t) { const d = document.createElement("div"); d.textContent = t; return d.innerHTML; }
+function markdown(md) {
+  if (window.marked && window.DOMPurify) return DOMPurify.sanitize(marked.parse(md || ""));
+  return "<p>" + texto(md).replace(/\n\n/g, "</p><p>").replace(/\n/g, "<br>") + "</p>";
+}
+
+// Llama a un agente de la API mostrando un indicador de carga
+async function llamar(ruta, datos, mensajeCarga) {
+  error("");
+  $("cargando-texto").textContent = mensajeCarga;
+  $("cargando").classList.remove("oculto");
+  window.scrollTo({ top: 0, behavior: "smooth" });
+  document.querySelectorAll("button").forEach(b => b.disabled = true);
+  try {
+    const r = await fetch(ruta, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(datos) });
+    const cuerpo = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      if (r.status === 429) throw new Error("Hiciste muchas consultas seguidas al plan gratuito. Espera un minuto y vuelve a intentarlo.");
+      if (r.status === 503) throw new Error("Gemini está muy ocupado en este momento. Espera un minuto y vuelve a intentarlo.");
+      throw new Error(cuerpo.detail ? String(cuerpo.detail) : "Algo salió mal. Vuelve a intentarlo.");
+    }
+    return cuerpo;
+  } catch (e) {
+    error(e.message.includes("fetch") ? "No hay conexión con el servidor. Si recién lo abriste, espera unos segundos: en el plan gratis tarda en despertar." : e.message);
+    return null;
+  } finally {
+    $("cargando").classList.add("oculto");
+    document.querySelectorAll("button").forEach(b => b.disabled = false);
+  }
+}
+
+// Paso 1 -> 2: agente planificador
+$("form-tema").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  estado.tema = $("tema").value.trim();
+  estado.nivel = $("nivel").value;
+  const plan = await llamar("/planificar",
+    { tema: estado.tema, nivel: estado.nivel, num_subtemas: Number($("cantidad").value) },
+    "El agente planificador está armando tu plan…");
+  if (!plan) return;
+  estado.plan = plan; estado.notas = {}; guardar();
+  pintarPlan();
+});
+
+function pintarPlan() {
+  const plan = estado.plan;
+  $("plan-titulo").textContent = "Plan: " + plan.tema;
+  $("plan-objetivo").textContent = plan.objetivo;
+  $("lista-subtemas").innerHTML = "";
+  [...plan.subtemas].sort((a, b) => a.orden - b.orden).forEach((s, i) => {
+    const nota = estado.notas[s.titulo];
+    const el = document.createElement("div");
+    el.className = "subtema" + (nota != null ? " hecho" : "");
+    el.tabIndex = 0;
+    el.innerHTML = `<div class="num">${nota != null ? "✓" : i + 1}</div>
+      <div><h3>${texto(s.titulo)}</h3><p>${texto(s.descripcion)}</p></div>
+      ${nota != null ? `<span class="nota">${nota}/100</span>` : ""}`;
+    el.onclick = () => estudiar(s.titulo);
+    el.onkeydown = (e) => { if (e.key === "Enter") estudiar(s.titulo); };
+    $("lista-subtemas").appendChild(el);
+  });
+  mostrar("plan");
+}
+
+// Paso 2 -> 3: agente tutor
+async function estudiar(subtema) {
+  const material = await llamar("/material",
+    { tema: estado.tema || estado.plan.tema, subtema, nivel: estado.nivel, num_preguntas: 3 },
+    "El agente tutor está preparando la explicación y las preguntas…");
+  if (!material) return;
+  estado.actual = subtema; estado.material = material; guardar();
+  $("estudio-titulo").textContent = subtema;
+  $("explicacion").innerHTML = markdown(material.explicacion);
+  $("puntos-clave").innerHTML = material.puntos_clave.map(p => `<li>${texto(p)}</li>`).join("");
+  $("preguntas").innerHTML = material.preguntas.map(p => `
+    <div class="pregunta">
+      <label for="r${p.id}">${p.id}. ${texto(p.enunciado)}</label>
+      <textarea id="r${p.id}" data-id="${p.id}" placeholder="Escribe tu respuesta con tus palabras"></textarea>
+    </div>`).join("");
+  mostrar("estudio");
+}
+
+// Paso 3 -> 4: agente evaluador
+$("form-respuestas").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  const respuestas = [...document.querySelectorAll("#preguntas textarea")]
+    .map(t => ({ id: Number(t.dataset.id), respuesta: t.value.trim() || "(sin respuesta)" }));
+  const ev2 = await llamar("/evaluar", { material: estado.material, respuestas },
+    "El agente evaluador está corrigiendo tus respuestas…");
+  if (!ev2) return;
+  estado.notas[estado.actual] = ev2.puntaje_total; guardar();
+  $("puntaje").textContent = ev2.puntaje_total + " / 100";
+  $("recomendacion").textContent = ev2.recomendacion;
+  const preguntas = Object.fromEntries(estado.material.preguntas.map(p => [p.id, p]));
+  $("resultados").innerHTML = ev2.resultados.map(r => `
+    <div class="pregunta">
+      <strong>${r.id}. ${texto(preguntas[r.id]?.enunciado || "")}</strong>
+      <div class="resultado ${r.correcta ? "bien" : "mal"}">
+        ${r.correcta ? "✔ Bien" : "✘ Por mejorar"} · ${r.puntaje}/10<br>${texto(r.retroalimentacion)}
+      </div>
+    </div>`).join("");
+  const pendiente = estado.plan.subtemas.find(s => estado.notas[s.titulo] == null);
+  $("siguiente").classList.toggle("oculto", !pendiente);
+  $("siguiente").onclick = () => pendiente && estudiar(pendiente.titulo);
+  mostrar("resultado");
+});
+
+document.querySelectorAll("[data-ir='plan']").forEach(b => b.onclick = pintarPlan);
+$("nuevo-tema").onclick = () => { estado.plan = null; guardar(); $("tema").value = ""; mostrar("tema"); };
+
+cargar();
+if (estado.plan) pintarPlan(); else mostrar("tema");
+</script>
+</body>
+</html>

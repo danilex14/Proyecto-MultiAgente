@@ -43,20 +43,23 @@ def preguntar(sistema: str, mensaje: str, formato: type[T]) -> T:
     )
     modelos = list(dict.fromkeys([MODELO, *RESPALDOS]))  # sin repetidos, el principal primero
     respuesta = None
+    limite_alcanzado = False
     for modelo in modelos:
         try:
             respuesta = cliente().models.generate_content(model=modelo, contents=mensaje, config=config)
             break
         except errors.ClientError as e:
-            if e.code == 429:
-                raise ErrorAgente("Llegaste al límite gratuito de Gemini; espera un minuto y reintenta.", 429)
             if e.code in (400, 401, 403) and "API key" in str(e):
                 raise ErrorAgente("La GEMINI_API_KEY no es válida. Revisa tu archivo .env.", 401)
-            if e.code != 404:  # 404 = modelo inexistente: probamos el siguiente
+            if e.code == 429:  # límite gratuito de este modelo: cada modelo tiene su propio límite
+                limite_alcanzado = True
+            elif e.code != 404:  # 404 = modelo inexistente: probamos el siguiente
                 raise ErrorAgente(f"Gemini rechazó la petición: {e}", 502)
         except errors.ServerError:
             pass  # modelo saturado (503): probamos el siguiente
     if respuesta is None:
+        if limite_alcanzado:
+            raise ErrorAgente("Llegaste al límite gratuito de Gemini; espera un minuto y reintenta.", 429)
         raise ErrorAgente("Gemini está saturado ahora mismo; reintenta en un minuto.", 503)
 
     if isinstance(respuesta.parsed, formato):

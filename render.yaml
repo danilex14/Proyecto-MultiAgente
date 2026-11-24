@@ -1,0 +1,8 @@
+﻿services:
+  - type: web
+    name: planificador-estudio
+    runtime: docker
+    plan: free
+    envVars:
+      - key: GEMINI_API_KEY
+        sync: false   # Render te pedirá el valor en el panel; no se guarda en el repo

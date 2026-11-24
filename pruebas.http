@@ -1,0 +1,30 @@
+### Probar la API desde VS Code (extensión REST Client: clic en "Send Request")
+@base = http://localhost:8000
+
+### 1. Agente planificador
+POST {{base}}/planificar
+Content-Type: application/json
+
+{ "tema": "Fotosíntesis", "nivel": "principiante", "num_subtemas": 4 }
+
+### 2. Agente tutor
+POST {{base}}/material
+Content-Type: application/json
+
+{ "tema": "Fotosíntesis", "subtema": "La fase luminosa", "num_preguntas": 2 }
+
+### 3. Agente evaluador
+POST {{base}}/evaluar
+Content-Type: application/json
+
+{
+  "material": {
+    "subtema": "Capitales",
+    "explicacion": "",
+    "puntos_clave": [],
+    "preguntas": [
+      { "id": 1, "enunciado": "¿Capital de Chile?", "respuesta_esperada": "Santiago" }
+    ]
+  },
+  "respuestas": [ { "id": 1, "respuesta": "Santiago de Chile" } ]
+}

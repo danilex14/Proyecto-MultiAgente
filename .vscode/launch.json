@@ -1,0 +1,54 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "API (FastAPI con recarga)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "uvicorn",
+      "args": ["app.main:app", "--reload", "--port", "8000"],
+      "envFile": "${workspaceFolder}/.env",
+      "jinja": true
+    },
+    {
+      "name": "Sesión de estudio completa (terminal)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "scripts.sesion_estudio",
+      "args": ["${input:tema}"],
+      "envFile": "${workspaceFolder}/.env",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Agente: planificador",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "scripts.probar_agente",
+      "args": ["planificador", "${input:tema}"],
+      "envFile": "${workspaceFolder}/.env",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Agente: tutor",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "scripts.probar_agente",
+      "args": ["tutor", "${input:tema}", "${input:subtema}"],
+      "envFile": "${workspaceFolder}/.env",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Agente: evaluador (ejemplo)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "scripts.probar_agente",
+      "args": ["evaluador"],
+      "envFile": "${workspaceFolder}/.env",
+      "console": "integratedTerminal"
+    }
+  ],
+  "inputs": [
+    { "id": "tema", "type": "promptString", "description": "Tema a estudiar", "default": "Fotosíntesis" },
+    { "id": "subtema", "type": "promptString", "description": "Subtema", "default": "La fase luminosa" }
+  ]
+}

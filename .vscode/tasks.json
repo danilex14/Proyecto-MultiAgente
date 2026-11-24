@@ -1,0 +1,35 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Crear entorno e instalar dependencias",
+      "type": "shell",
+      "command": "python -m venv .venv; .venv\\Scripts\\python -m pip install -r requirements.txt",
+      "osx": { "command": "python3 -m venv .venv && .venv/bin/pip install -r requirements.txt" },
+      "linux": { "command": "python3 -m venv .venv && .venv/bin/pip install -r requirements.txt" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Iniciar API",
+      "type": "shell",
+      "command": "${command:python.interpreterPath} -m uvicorn app.main:app --reload --port 8000",
+      "isBackground": true,
+      "problemMatcher": [],
+      "group": { "kind": "build", "isDefault": true }
+    },
+    {
+      "label": "Abrir documentación de la API",
+      "type": "shell",
+      "command": "start http://localhost:8000/docs",
+      "osx": { "command": "open http://localhost:8000/docs" },
+      "linux": { "command": "xdg-open http://localhost:8000/docs" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Construir imagen Docker",
+      "type": "shell",
+      "command": "docker build -t planificador-estudio .",
+      "problemMatcher": []
+    }
+  ]
+}

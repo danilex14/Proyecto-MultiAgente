@@ -148,8 +148,8 @@ gcloud run deploy planificador-estudio --source . --region us-central1 --allow-u
 ## 6. Personalizar
 
 - **Cambiar el comportamiento de un agente:** edita la constante `SISTEMA` en su archivo.
-- **Cambiar el modelo:** variable `GEMINI_MODEL` en `.env` (por defecto `gemini-flash-latest`,
-  que siempre apunta al modelo Flash más nuevo del plan gratuito).
+- **Cambiar el modelo:** variable `GEMINI_MODEL` en `.env` (por defecto `gemini-3.5-flash`;
+  si está saturado, la app prueba sola otros modelos Flash gratuitos).
 - **Si ves "límite gratuito":** espera un minuto; el plan gratis permite pocas peticiones por minuto.
 - **Agregar un agente nuevo:** crea un archivo en `app/agentes/`, define su formato en `esquemas.py`,
   llama a `preguntar(...)` y expón un endpoint en `main.py`.

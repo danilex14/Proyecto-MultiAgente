@@ -9,8 +9,9 @@ from pydantic import BaseModel, ValidationError
 
 load_dotenv()  # lee GEMINI_API_KEY desde .env en local
 
-# "gemini-flash-latest" apunta siempre al modelo Flash más reciente (incluido en el plan gratuito)
-MODELO = os.getenv("GEMINI_MODEL", "gemini-flash-latest")
+# Modelo principal (plan gratuito). Si está saturado o ya no existe, se prueban los de respaldo.
+MODELO = os.getenv("GEMINI_MODEL", "gemini-3.5-flash")
+RESPALDOS = ["gemini-3.5-flash", "gemini-3.8-flash", "gemini-3.7-flash", "gemini-3.5-flash-lite"]
 _cliente: genai.Client | None = None
 T = TypeVar("T", bound=BaseModel)
 
@@ -35,24 +36,28 @@ def cliente() -> genai.Client:
 
 def preguntar(sistema: str, mensaje: str, formato: type[T]) -> T:
     """Llama a Gemini y devuelve la respuesta validada contra el modelo `formato`."""
-    try:
-        respuesta = cliente().models.generate_content(
-            model=MODELO,
-            contents=mensaje,
-            config=types.GenerateContentConfig(
-                system_instruction=sistema,
-                response_mime_type="application/json",
-                response_schema=formato,
-            ),
-        )
-    except errors.ClientError as e:
-        if e.code == 429:
-            raise ErrorAgente("Llegaste al límite gratuito de Gemini; espera un minuto y reintenta.", 429)
-        if e.code in (400, 401, 403) and "API key" in str(e):
-            raise ErrorAgente("La GEMINI_API_KEY no es válida. Revisa tu archivo .env.", 401)
-        raise ErrorAgente(f"Gemini rechazó la petición: {e}", 502)
-    except errors.APIError as e:
-        raise ErrorAgente(f"Error de Gemini (reintenta en un momento): {e}", 502)
+    config = types.GenerateContentConfig(
+        system_instruction=sistema,
+        response_mime_type="application/json",
+        response_schema=formato,
+    )
+    modelos = list(dict.fromkeys([MODELO, *RESPALDOS]))  # sin repetidos, el principal primero
+    respuesta = None
+    for modelo in modelos:
+        try:
+            respuesta = cliente().models.generate_content(model=modelo, contents=mensaje, config=config)
+            break
+        except errors.ClientError as e:
+            if e.code == 429:
+                raise ErrorAgente("Llegaste al límite gratuito de Gemini; espera un minuto y reintenta.", 429)
+            if e.code in (400, 401, 403) and "API key" in str(e):
+                raise ErrorAgente("La GEMINI_API_KEY no es válida. Revisa tu archivo .env.", 401)
+            if e.code != 404:  # 404 = modelo inexistente: probamos el siguiente
+                raise ErrorAgente(f"Gemini rechazó la petición: {e}", 502)
+        except errors.ServerError:
+            pass  # modelo saturado (503): probamos el siguiente
+    if respuesta is None:
+        raise ErrorAgente("Gemini está saturado ahora mismo; reintenta en un minuto.", 503)
 
     if isinstance(respuesta.parsed, formato):
         return respuesta.parsed
